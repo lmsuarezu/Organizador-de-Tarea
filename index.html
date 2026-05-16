@@ -388,9 +388,23 @@ function setSync(state, label){
 }
 
 // ── FIREBASE LISTENER (tiempo real) ─────────────────────
-db.collection('tasks').orderBy('created','desc').onSnapshot(snapshot => {
+db.collection('tasks').onSnapshot(snapshot => {
   tasks = [];
-  snapshot.forEach(doc => tasks.push({ ...doc.data(), id: doc.id }));
+  snapshot.forEach(doc => {
+    const d = doc.data();
+    tasks.push({
+      ...d,
+      id: doc.id,
+      // compatibilidad con formato antiguo
+      priority: d.priority || d.importance || 'media',
+      urgency: d.urgency || 'normal',
+      created: d.created || parseInt(doc.id) || 0,
+      tags: d.tags || [],
+      recur: d.recur || ''
+    });
+  });
+  // ordenar por created desc en cliente
+  tasks.sort((a,b) => b.created - a.created);
   render();
   setSync('ok', 'Sincronizado');
 }, err => {
