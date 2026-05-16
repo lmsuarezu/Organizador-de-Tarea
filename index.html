@@ -146,10 +146,21 @@ select option{background:var(--card);color:var(--text)}
 ::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
 
+.sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:99;cursor:pointer}
+.sidebar-overlay.show{display:block}
+.sidebar-close-btn{display:none;position:absolute;top:12px;right:12px;background:var(--card2);border:1px solid var(--border);color:var(--text);width:32px;height:32px;border-radius:8px;cursor:pointer;align-items:center;justify-content:center;font-size:16px;z-index:10}
+
+.drag-handle{color:var(--hint);cursor:grab;padding:2px 4px;font-size:16px;display:flex;align-items:center;flex-shrink:0;touch-action:none;-webkit-touch-callout:none;user-select:none}
+.drag-handle:active{cursor:grabbing;color:var(--muted)}
+.task-card.dragging{opacity:.35;transform:scale(.97)}
+.task-card.drag-over{border-top:2px solid var(--accent)}
+
 @media(max-width:700px){
   .body{grid-template-columns:1fr}
-  .sidebar{display:none}
-  .sidebar.mob-open{display:flex;position:fixed;inset:0;z-index:100;width:85vw;max-width:300px;border-right:1px solid var(--border)}
+  .sidebar{display:none;position:relative}
+  .sidebar.mob-open{display:flex;position:fixed;top:0;left:0;bottom:0;z-index:100;width:85vw;max-width:300px;border-right:1px solid var(--border)}
+  .sidebar-close-btn{display:flex}
+  .task-actions{opacity:1}
 }
 </style>
 </head>
@@ -194,10 +205,14 @@ select option{background:var(--card);color:var(--text)}
   </div>
 
   <!-- BODY -->
-  <div class="body">
+  <!-- SIDEBAR OVERLAY -->
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeMobSidebar()"></div>
+
+<div class="body">
 
     <!-- SIDEBAR -->
     <div class="sidebar" id="sidebar">
+      <button class="sidebar-close-btn" onclick="closeMobSidebar()"><i class="ti ti-x"></i></button>
 
       <!-- FORM -->
       <div>
@@ -602,11 +617,12 @@ function renderTask(t){
   if(t.deadline) meta+=`<span class="badge badge-deadline${overdue?' overdue':''}"><i class="ti ti-calendar" style="font-size:10px"></i> ${t.deadline}</span>`;
   if(t.recur) meta+=`<span class="badge badge-recur"><i class="ti ti-refresh" style="font-size:10px"></i> ${t.recur==='daily'?'diaria':'semanal'}</span>`;
   (t.tags||[]).forEach(tg=>{ meta+=`<span class="badge" style="background:rgba(108,142,245,.1);color:var(--accent)">${tg}</span>`; });
-  return `<div class="task-card${t.done?' done':''}">
+  return `<div class="task-card${t.done?' done':''}" data-id="${t.id}" draggable="true">
     <div class="priority-bar ${t.priority}"></div>
     <div class="task-top">
+      <div class="drag-handle" title="Arrastrar"><i class="ti ti-grip-vertical"></i></div>
       <div class="task-check${t.done?' checked':''}" onclick="toggleDone('${t.id}')">${t.done?'<i class="ti ti-check" style="font-size:11px"></i>':''}</div>
-      <div class="task-title">${t.title}</div>
+      <div class="task-title" onclick="openEdit('${t.id}')" style="cursor:pointer">${t.title}</div>
       <div class="task-actions">
         <button class="task-btn" onclick="openEdit('${t.id}')"><i class="ti ti-edit"></i></button>
         <button class="task-btn del" onclick="deleteTask('${t.id}')"><i class="ti ti-trash"></i></button>
@@ -700,6 +716,110 @@ function checkMobile(){ document.getElementById('mobBtn').style.display = window
 window.addEventListener('resize', checkMobile);
 checkMobile();
 updatePomoDisplay();
+
+function toggleMobSidebar(){
+  document.getElementById('sidebar').classList.toggle('mob-open');
+  document.getElementById('sidebarOverlay').classList.toggle('show');
+}
+function closeMobSidebar(){
+  document.getElementById('sidebar').classList.remove('mob-open');
+  document.getElementById('sidebarOverlay').classList.remove('show');
+}
+
+// ── DRAG & DROP ──────────────────────────────────────────
+// orden manual guardado en localStorage
+let manualOrder = JSON.parse(localStorage.getItem('tf_order') || '[]');
+
+function saveOrder(ids){
+  manualOrder = ids;
+  localStorage.setItem('tf_order', JSON.stringify(ids));
+}
+
+function applyOrder(arr){
+  if(!manualOrder.length) return arr;
+  const ordered = [];
+  manualOrder.forEach(id => { const t = arr.find(x=>x.id===id); if(t) ordered.push(t); });
+  arr.forEach(t => { if(!manualOrder.includes(t.id)) ordered.push(t); });
+  return ordered;
+}
+
+function initDragDrop(listEl){
+  let dragId = null;
+
+  // Mouse drag
+  listEl.querySelectorAll('.task-card').forEach(card => {
+    card.addEventListener('dragstart', e => {
+      dragId = card.dataset.id;
+      setTimeout(()=>card.classList.add('dragging'), 0);
+    });
+    card.addEventListener('dragend', () => {
+      card.classList.remove('dragging');
+      card.classList.remove('drag-over');
+    });
+    card.addEventListener('dragover', e => {
+      e.preventDefault();
+      listEl.querySelectorAll('.task-card').forEach(c=>c.classList.remove('drag-over'));
+      card.classList.add('drag-over');
+    });
+    card.addEventListener('drop', e => {
+      e.preventDefault();
+      card.classList.remove('drag-over');
+      if(dragId === card.dataset.id) return;
+      const cards = [...listEl.querySelectorAll('.task-card')];
+      const fromIdx = cards.findIndex(c=>c.dataset.id===dragId);
+      const toIdx = cards.findIndex(c=>c.dataset.id===card.dataset.id);
+      if(fromIdx<0||toIdx<0) return;
+      const el = cards[fromIdx];
+      if(fromIdx < toIdx) card.after(el); else card.before(el);
+      saveOrder([...listEl.querySelectorAll('.task-card')].map(c=>c.dataset.id));
+    });
+
+    // Touch drag
+    const handle = card.querySelector('.drag-handle');
+    if(!handle) return;
+    let touchStartY = 0, ghost = null;
+
+    handle.addEventListener('touchstart', e => {
+      dragId = card.dataset.id;
+      touchStartY = e.touches[0].clientY;
+      card.classList.add('dragging');
+      ghost = card.cloneNode(true);
+      ghost.style.cssText = `position:fixed;opacity:.7;pointer-events:none;z-index:9999;width:${card.offsetWidth}px;left:${card.getBoundingClientRect().left}px;top:${card.getBoundingClientRect().top}px;margin:0`;
+      document.body.appendChild(ghost);
+      e.preventDefault();
+    }, {passive:false});
+
+    handle.addEventListener('touchmove', e => {
+      if(!ghost) return;
+      const touch = e.touches[0];
+      ghost.style.top = (touch.clientY - 30) + 'px';
+      const el = document.elementFromPoint(touch.clientX, touch.clientY);
+      const target = el && el.closest('.task-card');
+      listEl.querySelectorAll('.task-card').forEach(c=>c.classList.remove('drag-over'));
+      if(target && target !== card) target.classList.add('drag-over');
+      e.preventDefault();
+    }, {passive:false});
+
+    handle.addEventListener('touchend', e => {
+      card.classList.remove('dragging');
+      if(ghost){ ghost.remove(); ghost=null; }
+      const touch = e.changedTouches[0];
+      const el = document.elementFromPoint(touch.clientX, touch.clientY);
+      const target = el && el.closest('.task-card');
+      listEl.querySelectorAll('.task-card').forEach(c=>c.classList.remove('drag-over'));
+      if(target && target.dataset.id !== dragId){
+        const cards = [...listEl.querySelectorAll('.task-card')];
+        const fromIdx = cards.findIndex(c=>c.dataset.id===dragId);
+        const toIdx = cards.findIndex(c=>c===target);
+        if(fromIdx>=0 && toIdx>=0){
+          const moving = cards[fromIdx];
+          if(fromIdx < toIdx) target.after(moving); else target.before(moving);
+          saveOrder([...listEl.querySelectorAll('.task-card')].map(c=>c.dataset.id));
+        }
+      }
+    });
+  });
+}
 
 // Service Worker
 if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js');
