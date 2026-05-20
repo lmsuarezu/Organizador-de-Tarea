@@ -557,7 +557,8 @@ function subscribeFirestore(){
       const d = doc.data();
       const owner = d.owner || '';
       const sharedWith = d.sharedWith || [];
-      // Solo mostrar si soy el creador o está compartida conmigo
+      // Tareas sin owner son visibles para todos (datos legacy)
+      // Tareas con owner: solo el creador y los usuarios con acceso
       if(owner && owner !== currentUser && !sharedWith.includes(currentUser)) return;
       tasks.push({
         ...d,
@@ -570,14 +571,18 @@ function subscribeFirestore(){
         project: d.project || '',
         startDate: d.startDate || '',
         completedAt: d.completedAt || null,
-        owner: owner || currentUser,
+        owner: owner,
         sharedWith: sharedWith
       });
     });
     tasks.sort((a,b) => b.created - a.created);
     render();
     setSync('ok','Sincronizado');
-  }, err => { setSync('err','Sin conexión'); });
+  }, err => {
+    console.error('Firestore error:', err);
+    setSync('err','Sin conexión');
+    showToast('Error de conexión con Firebase','ti-wifi-off');
+  });
 }
 
 function setSync(s, lbl){
