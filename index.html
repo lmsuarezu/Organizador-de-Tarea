@@ -185,7 +185,7 @@ select option{background:var(--card);color:var(--text)}
 .gantt-month{flex:1;font-size:10px;color:var(--muted);text-align:center;font-family:var(--mono)}
 
 /* MOBILE FAB */
-.fab{display:none;position:fixed;bottom:24px;left:24px;width:54px;height:54px;border-radius:50%;background:var(--accent);color:#fff;border:none;cursor:pointer;font-size:24px;align-items:center;justify-content:center;box-shadow:0 4px 20px rgba(108,142,245,.4);z-index:90;transition:transform .2s}
+.fab{display:none;position:fixed;bottom:24px;right:24px;width:54px;height:54px;border-radius:50%;background:var(--accent);color:#fff;border:none;cursor:pointer;font-size:24px;align-items:center;justify-content:center;box-shadow:0 4px 20px rgba(108,142,245,.4);z-index:90;transition:transform .2s}
 .fab:hover{transform:scale(1.08)}
 .fab:active{transform:scale(.95)}
 
@@ -253,13 +253,14 @@ select option{background:var(--card);color:var(--text)}
         <span class="sync-dot" id="syncDot"></span>
         <span id="syncLabel">Conectando...</span>
       </span>
+      <span style="font-size:12px;color:var(--muted);margin-left:8px;display:flex;align-items:center;gap:4px"><i class="ti ti-user" style="font-size:13px"></i><span id="headerUser"></span></span>
     </div>
     <div class="header-right">
       <button class="icon-btn" onclick="startFocus()" title="Enfoque (F)"><i class="ti ti-eye"></i></button>
       <button class="icon-btn" onclick="showGantt()" title="Diagrama Gantt"><i class="ti ti-chart-gantt"></i></button>
       <button class="icon-btn" onclick="exportCSV()" title="Exportar CSV"><i class="ti ti-download"></i></button>
       <button class="icon-btn" id="themeBtn" onclick="toggleTheme()" title="Tema (D)"><i class="ti ti-sun"></i></button>
-      <button class="icon-btn" onclick="doLogout()" title="Cerrar sesión"><i class="ti ti-logout"></i></button>
+      <button class="icon-btn" onclick="doLogout()" title="Cerrar sesión" style="border-color:var(--red);color:var(--red)" onmouseover="this.style.background='var(--red)';this.style.color='#fff'" onmouseout="this.style.background='';this.style.color='var(--red)'"><i class="ti ti-logout"></i></button>
     </div>
   </div>
 
@@ -455,7 +456,8 @@ select option{background:var(--card);color:var(--text)}
 // ── CONFIG USUARIOS (añade/cambia los que quieras) ────────
 const USERS = {
   "luis": "peaks2025",
-  "admin": "taskflow123"
+  "admin": "taskflow123",
+  "gene": "Osl0preci0s0"
 };
 
 // ── FIREBASE ──────────────────────────────────────────────
@@ -490,6 +492,8 @@ function doLogout(){
 function showApp(){
   document.getElementById('loginScreen').style.display = 'none';
   document.getElementById('appScreen').classList.add('show');
+  const el = document.getElementById('headerUser');
+  if(el) el.textContent = currentUser;
   initApp();
 }
 document.getElementById('loginPass').addEventListener('keydown', e => {
