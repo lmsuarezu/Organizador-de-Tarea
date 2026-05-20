@@ -155,6 +155,16 @@ select option{background:var(--card);color:var(--text)}
 .badge-done-time{background:rgba(52,211,153,.1);color:var(--green);display:flex;align-items:center;gap:3px}
 .badge-recur{background:rgba(108,142,245,.12);color:var(--accent)}
 .empty{text-align:center;padding:40px 20px;color:var(--muted);font-size:13px}
+.badge-shared{background:rgba(167,139,250,.15);color:#a78bfa;display:flex;align-items:center;gap:3px}
+.share-user-row{display:flex;align-items:center;justify-content:space-between;padding:8px 10px;border-radius:8px;background:var(--card);margin-bottom:6px}
+.share-user-name{font-size:13px;font-weight:500;text-transform:capitalize}
+.share-toggle{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
+.toggle-switch{position:relative;width:34px;height:18px;cursor:pointer}
+.toggle-switch input{opacity:0;width:0;height:0}
+.toggle-slider{position:absolute;inset:0;background:var(--border);border-radius:20px;transition:.2s}
+.toggle-slider:before{content:'';position:absolute;width:12px;height:12px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.2s}
+.toggle-switch input:checked+.toggle-slider{background:var(--accent)}
+.toggle-switch input:checked+.toggle-slider:before{transform:translateX(16px)}
 
 /* MODALS */
 .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:998;align-items:center;justify-content:center}
@@ -421,6 +431,18 @@ select option{background:var(--card);color:var(--text)}
   </div>
 </div>
 
+<!-- MODAL COMPARTIR -->
+<div class="overlay" id="shareModal">
+  <div class="modal" style="max-width:340px">
+    <h3><i class="ti ti-share" style="margin-right:6px"></i>Compartir tarea</h3>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:14px">Solo tú puedes gestionar con quién se comparte esta tarea.</p>
+    <div id="shareUserList"></div>
+    <div class="modal-actions">
+      <button class="btn-sec" onclick="closeShare()">Cerrar</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL GANTT -->
 <div class="overlay" id="ganttModal">
   <div class="modal" style="width:700px;max-width:96vw">
@@ -533,6 +555,10 @@ function subscribeFirestore(){
     tasks = [];
     snapshot.forEach(doc => {
       const d = doc.data();
+      const owner = d.owner || '';
+      const sharedWith = d.sharedWith || [];
+      // Solo mostrar si soy el creador o está compartida conmigo
+      if(owner && owner !== currentUser && !sharedWith.includes(currentUser)) return;
       tasks.push({
         ...d,
         id: doc.id,
@@ -543,7 +569,9 @@ function subscribeFirestore(){
         recur: d.recur || '',
         project: d.project || '',
         startDate: d.startDate || '',
-        completedAt: d.completedAt || null
+        completedAt: d.completedAt || null,
+        owner: owner || currentUser,
+        sharedWith: sharedWith
       });
     });
     tasks.sort((a,b) => b.created - a.created);
@@ -641,7 +669,9 @@ async function addTask(){
       project: currentProject || '',
       done: false,
       created: Date.now(),
-      completedAt: null
+      completedAt: null,
+      owner: currentUser,
+      sharedWith: []
     });
     document.getElementById('taskTitle').value = '';
     document.getElementById('taskStart').value = '';
@@ -666,7 +696,8 @@ async function toggleDone(id){
   if(newDone && t.recur){
     const next = { title:t.title, priority:t.priority, urgency:t.urgency,
       tags:t.tags, project:t.project, recur:t.recur, done:false,
-      created:Date.now(), completedAt:null, startDate:'', deadline:'' };
+      created:Date.now(), completedAt:null, startDate:'', deadline:'',
+      owner: t.owner || currentUser, sharedWith: t.sharedWith || [] };
     if(t.deadline){
       const d = new Date(t.deadline);
       if(t.recur==='daily') d.setDate(d.getDate()+1);
@@ -679,6 +710,8 @@ async function toggleDone(id){
 }
 
 async function deleteTask(id){
+  const t = tasks.find(x=>x.id===id);
+  if(t && t.owner && t.owner !== currentUser){ showToast('Solo el creador puede eliminar esta tarea','ti-lock'); return; }
   await db.collection('tasks').doc(id).delete();
   showToast('Eliminada','ti-trash');
 }
@@ -702,6 +735,8 @@ async function deleteFromEdit(){ if(editingId){ await deleteTask(editingId); clo
 function openEdit(id){
   const t = tasks.find(x=>x.id===id);
   if(!t) return;
+  const isOwner = !t.owner || t.owner === currentUser;
+  if(!isOwner){ showToast('Solo el creador puede editar esta tarea','ti-lock'); return; }
   editingId = id;
   document.getElementById('editTitle').value = t.title;
   document.getElementById('editPriority').value = t.priority;
@@ -709,13 +744,50 @@ function openEdit(id){
   document.getElementById('editStart').value = t.startDate||'';
   document.getElementById('editDeadline').value = t.deadline||'';
   document.getElementById('editRecur').value = t.recur||'';
-  // poblar selector de proyectos
   const sel = document.getElementById('editProject');
   sel.innerHTML = `<option value="">Sin proyecto</option>` +
     projects.map(p=>`<option value="${p.id}"${t.project===p.id?' selected':''}>${p.name}</option>`).join('');
   document.getElementById('editModal').classList.add('show');
 }
 function closeEdit(){ document.getElementById('editModal').classList.remove('show'); editingId=null; }
+
+// ── COMPARTIR ─────────────────────────────────────────────
+// Usuarios disponibles para compartir (todos excepto uno mismo y admin)
+const SHAREABLE_USERS = ['luis','gene'];
+
+let sharingId = null;
+
+function openShare(id, e){
+  e.stopPropagation();
+  const t = tasks.find(x=>x.id===id);
+  if(!t) return;
+  if(t.owner && t.owner !== currentUser){ showToast('Solo el creador puede gestionar el acceso','ti-lock'); return; }
+  sharingId = id;
+  const sharedWith = t.sharedWith || [];
+  const others = SHAREABLE_USERS.filter(u => u !== currentUser);
+  document.getElementById('shareUserList').innerHTML = others.map(u => `
+    <div class="share-user-row">
+      <div class="share-user-name"><i class="ti ti-user" style="font-size:12px;margin-right:4px;color:var(--muted)"></i>${u}</div>
+      <label class="toggle-switch" title="${sharedWith.includes(u)?'Quitar acceso':'Dar acceso'}">
+        <input type="checkbox" ${sharedWith.includes(u)?'checked':''} onchange="toggleShare('${u}',this.checked)">
+        <span class="toggle-slider"></span>
+      </label>
+    </div>`).join('');
+  document.getElementById('shareModal').classList.add('show');
+}
+
+async function toggleShare(user, granted){
+  if(!sharingId) return;
+  const t = tasks.find(x=>x.id===sharingId);
+  if(!t) return;
+  let sw = [...(t.sharedWith||[])];
+  if(granted && !sw.includes(user)) sw.push(user);
+  else if(!granted) sw = sw.filter(u=>u!==user);
+  await db.collection('tasks').doc(sharingId).update({ sharedWith: sw });
+  showToast(granted ? `Compartida con ${user}` : `Acceso retirado a ${user}`, granted?'ti-share':'ti-user-minus');
+}
+
+function closeShare(){ document.getElementById('shareModal').classList.remove('show'); sharingId=null; }
 
 // ── RENDER ────────────────────────────────────────────────
 function getFiltered(){
@@ -758,6 +830,9 @@ function renderTask(t){
   const today = new Date().toISOString().split('T')[0];
   const overdue = t.deadline && t.deadline < today && !t.done;
   const proj = projects.find(p=>p.id===t.project);
+  const isOwner = !t.owner || t.owner === currentUser;
+  const isShared = t.owner && t.owner !== currentUser;
+  const hasShares = isOwner && t.sharedWith && t.sharedWith.length > 0;
   let meta = `<span class="badge badge-${t.priority}">${t.priority}</span>`;
   if(t.urgency==='urgente') meta+=`<span class="badge badge-urgente">urgente</span>`;
   if(proj) meta+=`<span class="badge" style="background:${proj.color}22;color:${proj.color}">${proj.name}</span>`;
@@ -765,16 +840,20 @@ function renderTask(t){
   if(t.recur) meta+=`<span class="badge badge-recur"><i class="ti ti-refresh" style="font-size:10px"></i>${t.recur==='daily'?'diaria':'semanal'}</span>`;
   (t.tags||[]).forEach(tg=>{ meta+=`<span class="badge" style="background:rgba(108,142,245,.1);color:var(--accent)">${tg}</span>`; });
   if(t.done && t.completedAt) meta+=`<span class="badge badge-done-time"><i class="ti ti-clock" style="font-size:10px"></i>${fmtCompleted(t.completedAt)}</span>`;
+  if(isShared) meta+=`<span class="badge badge-shared"><i class="ti ti-share" style="font-size:10px"></i>de ${t.owner}</span>`;
+  if(hasShares) meta+=`<span class="badge badge-shared"><i class="ti ti-users" style="font-size:10px"></i>compartida</span>`;
+  const ownerActions = isOwner
+    ? `<button class="task-btn" onclick="openShare('${t.id}',event)" title="Compartir"><i class="ti ti-share"></i></button>
+       <button class="task-btn" onclick="openEdit('${t.id}')"><i class="ti ti-edit"></i></button>
+       <button class="task-btn del" onclick="deleteTask('${t.id}')"><i class="ti ti-trash"></i></button>`
+    : `<span style="font-size:10px;color:var(--muted);padding:4px"><i class="ti ti-lock"></i></span>`;
   return `<div class="task-card${t.done?' done':''}" data-id="${t.id}" draggable="true">
     <div class="priority-bar ${t.priority}"></div>
     <div class="task-top">
       <div class="drag-handle"><i class="ti ti-grip-vertical"></i></div>
       <div class="task-check${t.done?' checked':''}" onclick="toggleDone('${t.id}')">${t.done?'<i class="ti ti-check" style="font-size:10px"></i>':''}</div>
-      <div class="task-title" onclick="openEdit('${t.id}')">${t.title}</div>
-      <div class="task-actions">
-        <button class="task-btn" onclick="openEdit('${t.id}')"><i class="ti ti-edit"></i></button>
-        <button class="task-btn del" onclick="deleteTask('${t.id}')"><i class="ti ti-trash"></i></button>
-      </div>
+      <div class="task-title" onclick="${isOwner?`openEdit('${t.id}')`:'void(0)'}">${t.title}</div>
+      <div class="task-actions">${ownerActions}</div>
     </div>
     <div class="task-meta">${meta}</div>
   </div>`;
@@ -1090,7 +1169,7 @@ document.addEventListener('keydown', e => {
   if(e.key==='Enter'&&document.activeElement.id==='tagInput'){addTag();e.preventDefault();}
   if(e.key==='Enter'&&document.activeElement.id==='loginPass'){doLogin();}
   if(e.key==='f'&&!editing) startFocus();
-  if(e.key==='Escape'){stopFocus();closeEdit();closeProjModal();document.getElementById('ganttModal').classList.remove('show');}
+  if(e.key==='Escape'){stopFocus();closeEdit();closeProjModal();closeShare();document.getElementById('ganttModal').classList.remove('show');}
   if(e.key==='d'&&!editing) toggleTheme();
 });
 </script>
