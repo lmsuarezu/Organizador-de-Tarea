@@ -40,8 +40,6 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 .login-err{color:var(--red);font-size:12px;margin-top:8px;text-align:center;min-height:18px}
 
 /* ── APP SHELL ── */
-#appScreen{display:none;flex-direction:column;height:100vh;max-height:100vh;overflow:hidden}
-#appScreen.show{display:flex}
 
 /* HEADER */
 .header{padding:12px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--surface);flex-shrink:0}
@@ -252,7 +250,7 @@ select option{background:var(--card);color:var(--text)}
 </div>
 
 <!-- ── APP ── -->
-<div id="appScreen">
+<div id="appScreen" style="display:none;flex-direction:column;height:100vh;max-height:100vh;overflow:hidden">
 
   <!-- HEADER -->
   <div class="header">
@@ -530,7 +528,8 @@ function doLogout(){
 }
 function showApp(){
   document.getElementById('loginScreen').style.display = 'none';
-  document.getElementById('appScreen').classList.add('show');
+  const app = document.getElementById('appScreen');
+  app.style.display = 'flex';
   const el = document.getElementById('headerUser');
   if(el) el.textContent = currentUser;
   initApp();
