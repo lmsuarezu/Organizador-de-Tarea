@@ -493,6 +493,23 @@ firebase.initializeApp({
 });
 const db = firebase.firestore();
 
+// ── STATE ─────────────────────────────────────────────────
+let tasks = [];
+let projects = JSON.parse(localStorage.getItem('tf_projects') || '[]');
+let currentProject = null;
+let priority = 'alta';
+let urgency = 'urgente';
+let currentTags = [];
+let editingId = null;
+let focusTaskId = null;
+let manualOrder = JSON.parse(localStorage.getItem('tf_order') || '[]');
+let selectedColor = '#6c8ef5';
+let unsubscribe = null;
+let sharingId = null;
+
+const PROJECT_COLORS = ['#6c8ef5','#f87171','#fbbf24','#34d399','#a78bfa','#2dd4bf','#fb923c','#e879f9','#94a3b8'];
+const SHAREABLE_USERS = ['luis','gene'];
+
 // ── LOGIN ─────────────────────────────────────────────────
 let currentUser = sessionStorage.getItem('tf_user') || null;
 
@@ -521,23 +538,6 @@ function showApp(){
 document.getElementById('loginPass').addEventListener('keydown', e => {
   if(e.key === 'Enter') doLogin();
 });
-
-if(currentUser) showApp();
-
-// ── STATE ─────────────────────────────────────────────────
-let tasks = [];
-let projects = JSON.parse(localStorage.getItem('tf_projects') || '[]');
-let currentProject = null; // null = todas
-let priority = 'alta';
-let urgency = 'urgente';
-let currentTags = [];
-let editingId = null;
-let focusTaskId = null;
-let manualOrder = JSON.parse(localStorage.getItem('tf_order') || '[]');
-let selectedColor = '#6c8ef5';
-let unsubscribe = null;
-
-const PROJECT_COLORS = ['#6c8ef5','#f87171','#fbbf24','#34d399','#a78bfa','#2dd4bf','#fb923c','#e879f9','#94a3b8'];
 
 // ── INIT ──────────────────────────────────────────────────
 function initApp(){
