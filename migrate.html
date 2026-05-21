@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Migración Taskflow</title>
+<style>
+body{font-family:system-ui,sans-serif;background:#0d0f14;color:#e8eaf0;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0}
+.box{background:#13161d;border:1px solid #2a2f3d;border-radius:14px;padding:32px;width:100%;max-width:480px}
+h2{margin-bottom:8px;font-size:18px}
+p{color:#6b7280;font-size:13px;margin-bottom:24px;line-height:1.6}
+.btn{background:#6c8ef5;color:#fff;border:none;padding:12px 20px;border-radius:8px;cursor:pointer;font-size:14px;width:100%;margin-bottom:10px}
+.btn:hover{opacity:.85}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.log{background:#1a1e28;border-radius:8px;padding:14px;font-size:12px;font-family:monospace;color:#9aa0a6;max-height:200px;overflow-y:auto;margin-top:16px;white-space:pre-wrap;display:none}
+.ok{color:#34d399}.err{color:#f87171}.info{color:#6c8ef5}
+</style>
+</head>
+<body>
+<div class="box">
+  <h2>🔧 Migración de tareas</h2>
+  <p>Esta herramienta asigna <strong>owner: "luis"</strong> a todas las tareas que no tienen propietario. Ejecútala una sola vez. Después Gene solo verá sus propias tareas y las compartidas.</p>
+  <button class="btn" id="migrateBtn" onclick="migrate()">Asignar owner "luis" a tareas sin propietario</button>
+  <div class="log" id="log"></div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script>
+firebase.initializeApp({
+  apiKey: "AIzaSyBQQWnsn-zFjvryHRwjCLr8sZIk0V1sb-c",
+  authDomain: "organizadortareas-eb010.firebaseapp.com",
+  projectId: "organizadortareas-eb010",
+  storageBucket: "organizadortareas-eb010.firebasestorage.app",
+  messagingSenderId: "181036478852",
+  appId: "1:181036478852:web:c8cddf99c141a11a3b6dd1"
+});
+const db = firebase.firestore();
+
+function log(msg, cls=''){
+  const el = document.getElementById('log');
+  el.style.display = 'block';
+  el.innerHTML += `<span class="${cls}">${msg}\n</span>`;
+  el.scrollTop = el.scrollHeight;
+}
+
+async function migrate(){
+  const btn = document.getElementById('migrateBtn');
+  btn.disabled = true;
+  log('Conectando a Firestore...', 'info');
+  try {
+    const snapshot = await db.collection('tasks').get();
+    const noOwner = snapshot.docs.filter(doc => !doc.data().owner);
+    log(`Tareas sin owner encontradas: ${noOwner.length}`, 'info');
+    if(noOwner.length === 0){
+      log('✓ No hay tareas que migrar. Todo está correcto.', 'ok');
+      btn.disabled = false;
+      return;
+    }
+    let done = 0;
+    for(const doc of noOwner){
+      await db.collection('tasks').doc(doc.id).update({
+        owner: 'luis',
+        sharedWith: []
+      });
+      done++;
+      log(`✓ Migrada: "${doc.data().title || doc.id}"`, 'ok');
+    }
+    log(`\n✅ Migración completada. ${done} tareas actualizadas.`, 'ok');
+    log('Ahora puedes cerrar esta página.', 'info');
+  } catch(e){
+    log('❌ Error: ' + e.message, 'err');
+    btn.disabled = false;
+  }
+}
+</script>
+</body>
+</html>
