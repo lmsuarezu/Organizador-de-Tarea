@@ -756,11 +756,6 @@ function openEdit(id){
 function closeEdit(){ document.getElementById('editModal').classList.remove('show'); editingId=null; }
 
 // ── COMPARTIR ─────────────────────────────────────────────
-// Usuarios disponibles para compartir (todos excepto uno mismo y admin)
-const SHAREABLE_USERS = ['luis','gene'];
-
-let sharingId = null;
-
 function openShare(id, e){
   e.stopPropagation();
   const t = tasks.find(x=>x.id===id);
