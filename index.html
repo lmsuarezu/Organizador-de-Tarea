@@ -151,7 +151,10 @@ select option{background:var(--card);color:var(--text)}
 .badge-date{background:var(--card2);color:var(--muted);display:flex;align-items:center;gap:3px}
 .badge-date.overdue{background:rgba(248,113,113,.15);color:var(--red)}
 .badge-done-time{background:rgba(52,211,153,.1);color:var(--green);display:flex;align-items:center;gap:3px}
-.badge-recur{background:rgba(108,142,245,.12);color:var(--accent)}
+.tag-suggestions{position:absolute;top:100%;left:0;right:0;background:var(--card2);border:1px solid var(--border);border-radius:8px;z-index:50;max-height:140px;overflow-y:auto;display:none;margin-top:2px}
+.tag-suggestions.open{display:block}
+.tag-sug-item{padding:7px 12px;font-size:13px;cursor:pointer;transition:background .15s}
+.tag-sug-item:hover{background:var(--accent);color:#fff}
 .empty{text-align:center;padding:40px 20px;color:var(--muted);font-size:13px}
 .badge-shared{background:rgba(167,139,250,.15);color:#a78bfa;display:flex;align-items:center;gap:3px}
 .share-user-row{display:flex;align-items:center;justify-content:space-between;padding:8px 10px;border-radius:8px;background:var(--card);margin-bottom:6px}
@@ -265,7 +268,7 @@ select option{background:var(--card);color:var(--text)}
     </div>
     <div class="header-right">
       <button class="icon-btn" onclick="startFocus()" title="Enfoque (F)"><i class="ti ti-eye"></i></button>
-      <button class="icon-btn" onclick="showGantt()" title="Diagrama Gantt"><i class="ti ti-chart-gantt"></i></button>
+      <button class="icon-btn" onclick="showGantt()" title="Diagrama Gantt" style="width:auto;padding:0 10px;gap:5px;font-size:12px"><i class="ti ti-chart-gantt"></i><span style="display:none" id="ganttBtnTxt">Gantt</span></button>
       <button class="icon-btn" onclick="exportCSV()" title="Exportar CSV"><i class="ti ti-download"></i></button>
       <button class="icon-btn" id="themeBtn" onclick="toggleTheme()" title="Tema (D)"><i class="ti ti-sun"></i></button>
       <button class="icon-btn" onclick="doLogout()" title="Cerrar sesión" style="border-color:var(--red);color:var(--red)" onmouseover="this.style.background='var(--red)';this.style.color='#fff'" onmouseout="this.style.background='';this.style.color='var(--red)'"><i class="ti ti-logout"></i></button>
@@ -321,24 +324,44 @@ select option{background:var(--card);color:var(--text)}
       <!-- FORM -->
       <div class="task-form" id="taskForm">
         <input type="text" id="taskTitle" placeholder="Nueva tarea... (N)">
-        <div class="chips">
-          <div class="chip sel-alta" id="c-alta" onclick="selPriority('alta')">Alta</div>
-          <div class="chip" id="c-media" onclick="selPriority('media')">Media</div>
-          <div class="chip" id="c-baja" onclick="selPriority('baja')">Baja</div>
-          <div class="chip sel-urgente" id="c-urgente" onclick="selUrgency('urgente')">Urgente</div>
-          <div class="chip" id="c-normal" onclick="selUrgency('normal')">Normal</div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Prioridad</label>
+          <div class="chips">
+            <div class="chip sel-alta" id="c-alta" onclick="selPriority('alta')">Alta</div>
+            <div class="chip" id="c-media" onclick="selPriority('media')">Media</div>
+            <div class="chip" id="c-baja" onclick="selPriority('baja')">Baja</div>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Urgencia</label>
+          <div class="chips">
+            <div class="chip sel-urgente" id="c-urgente" onclick="selUrgency('urgente')">Urgente</div>
+            <div class="chip" id="c-baja-urg" onclick="selUrgency('baja')">Baja</div>
+          </div>
         </div>
         <div class="form-toggle" onclick="toggleFormExtra()"><i class="ti ti-chevron-down" id="formToggleIcon"></i> Más opciones</div>
         <div class="form-extra" id="formExtra">
+          <div>
+            <label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:4px">Proyecto</label>
+            <select id="taskProject">
+              <option value="">Sin proyecto</option>
+            </select>
+          </div>
           <div class="form-row">
             <div><label style="font-size:11px;color:var(--muted)">Fecha inicio</label><input type="date" id="taskStart"></div>
             <div><label style="font-size:11px;color:var(--muted)">Fecha fin</label><input type="date" id="taskDeadline"></div>
           </div>
-          <div class="tag-row">
-            <input type="text" id="tagInput" placeholder="Etiqueta">
-            <button class="tag-add-btn" onclick="addTag()"><i class="ti ti-plus"></i></button>
+          <div style="position:relative">
+            <label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:4px">Etiquetas</label>
+            <div class="tag-row">
+              <div style="position:relative;flex:1">
+                <input type="text" id="tagInput" placeholder="Escribe o elige..." autocomplete="off" oninput="filterTagSuggestions()" onfocus="filterTagSuggestions()" onkeydown="tagKeyDown(event)">
+                <div class="tag-suggestions" id="tagSuggestions"></div>
+              </div>
+              <button class="tag-add-btn" onclick="addTag()"><i class="ti ti-plus"></i></button>
+            </div>
+            <div class="tags-display" id="tagsDisplay"></div>
           </div>
-          <div class="tags-display" id="tagsDisplay"></div>
           <select id="taskRecur">
             <option value="">Sin recurrencia</option>
             <option value="daily">Diaria</option>
@@ -545,12 +568,21 @@ document.getElementById('loginPass').addEventListener('keydown', e => {
 // ── INIT ──────────────────────────────────────────────────
 function initApp(){
   renderProjects();
+  renderProjectSelect();
   renderColorPicker();
   renderShareOnCreate();
   subscribeFirestore();
   checkMobile();
   updatePomoDisplay();
   if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js');
+}
+
+function renderProjectSelect(){
+  const sel = document.getElementById('taskProject');
+  if(!sel) return;
+  sel.innerHTML = `<option value="">Sin proyecto</option>` +
+    projects.map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
+  if(currentProject) sel.value = currentProject;
 }
 
 function subscribeFirestore(){
@@ -633,6 +665,7 @@ function saveProject(){
   localStorage.setItem('tf_projects', JSON.stringify(projects));
   closeProjModal();
   renderProjects();
+  renderProjectSelect();
   showToast('Proyecto creado','ti-folder');
 }
 
@@ -695,7 +728,7 @@ async function addTask(){
       deadline: document.getElementById('taskDeadline').value,
       recur: document.getElementById('taskRecur').value,
       tags: [...currentTags],
-      project: currentProject || '',
+      project: document.getElementById('taskProject').value || currentProject || '',
       done: false,
       created: Date.now(),
       completedAt: null,
@@ -1007,46 +1040,109 @@ function initDragDrop(listEl){
 
 // ── GANTT ─────────────────────────────────────────────────
 function showGantt(){
-  const withDates = tasks.filter(t => t.startDate && t.deadline && !t.done &&
+  const withDates = tasks.filter(t => t.startDate && t.deadline &&
     (currentProject===null || t.project===currentProject));
   if(!withDates.length){
     showToast('No hay tareas con fechas de inicio y fin','ti-info-circle');
     return;
   }
-  const dates = withDates.flatMap(t=>[new Date(t.startDate),new Date(t.deadline)]);
-  const minD = new Date(Math.min(...dates));
-  const maxD = new Date(Math.max(...dates));
-  minD.setDate(1);
-  maxD.setMonth(maxD.getMonth()+1); maxD.setDate(0);
-  const totalDays = (maxD-minD)/(1000*60*60*24);
 
-  // generar meses para cabecera
-  const months = [];
+  const dates = withDates.flatMap(t=>[new Date(t.startDate),new Date(t.deadline)]);
+  let minD = new Date(Math.min(...dates));
+  let maxD = new Date(Math.max(...dates));
+  // ajustar a lunes anterior y domingo siguiente
+  const dow = minD.getDay();
+  minD.setDate(minD.getDate() - (dow===0?6:dow-1));
+  const dow2 = maxD.getDay();
+  maxD.setDate(maxD.getDate() + (dow2===0?0:7-dow2));
+  const totalDays = Math.round((maxD-minD)/(1000*60*60*24)) + 1;
+
+  // generar semanas
+  const weeks = [];
   const cur = new Date(minD);
+  let wNum = 1;
   while(cur <= maxD){
-    months.push(cur.toLocaleDateString('es-ES',{month:'short',year:'2-digit'}));
-    cur.setMonth(cur.getMonth()+1);
+    const wStart = new Date(cur);
+    const wEnd = new Date(cur); wEnd.setDate(wEnd.getDate()+6);
+    weeks.push({ label:`Sem ${wNum}`, start: new Date(wStart), end: new Date(wEnd) });
+    cur.setDate(cur.getDate()+7);
+    wNum++;
+  }
+
+  // generar días
+  const days = [];
+  const d = new Date(minD);
+  while(d <= maxD){
+    days.push(new Date(d));
+    d.setDate(d.getDate()+1);
   }
 
   const COLORS = {alta:'#f87171',media:'#fbbf24',baja:'#34d399'};
+  const today = new Date(); today.setHours(0,0,0,0);
+  const todayPct = ((today-minD)/(1000*60*60*24))/totalDays*100;
+
+  const weeksHeader = weeks.map(w => {
+    const left = ((w.start-minD)/(1000*60*60*24))/totalDays*100;
+    const width = 7/totalDays*100;
+    return `<div style="position:absolute;left:${left.toFixed(2)}%;width:${width.toFixed(2)}%;text-align:center;font-size:10px;color:var(--muted);font-family:var(--mono);border-right:1px solid var(--border);padding:3px 0;overflow:hidden">${w.label}</div>`;
+  }).join('');
+
+  const daysHeader = days.map((d,i) => {
+    const left = (i/totalDays)*100;
+    const width = (1/totalDays)*100;
+    const isToday = d.getTime()===today.getTime();
+    const isMon = d.getDay()===1;
+    const label = d.getDate();
+    return `<div style="position:absolute;left:${left.toFixed(2)}%;width:${width.toFixed(2)}%;text-align:center;font-size:9px;color:${isToday?'var(--accent)':isMon?'var(--text)':'var(--hint)'};font-family:var(--mono);font-weight:${isToday||isMon?'600':'400'};overflow:hidden">${label}</div>`;
+  }).join('');
+
+  const dayLines = days.map((d,i) => {
+    const left = (i/totalDays)*100;
+    const isMon = d.getDay()===1;
+    return `<div style="position:absolute;left:${left.toFixed(2)}%;top:0;bottom:0;width:1px;background:${isMon?'var(--border)':'var(--hint)'};opacity:${isMon?1:0.4}"></div>`;
+  }).join('');
+
   const rows = withDates.map(t => {
-    const s = new Date(t.startDate);
-    const e = new Date(t.deadline);
+    const s = new Date(t.startDate); s.setHours(0,0,0,0);
+    const e = new Date(t.deadline); e.setHours(0,0,0,0);
     const left = ((s-minD)/(1000*60*60*24))/totalDays*100;
     const width = ((e-s)/(1000*60*60*24)+1)/totalDays*100;
-    return `<div class="gantt-row">
-      <div class="gantt-label" title="${t.title}">${t.title}</div>
-      <div class="gantt-track">
-        <div class="gantt-bar" style="left:${left.toFixed(1)}%;width:${Math.max(width,1).toFixed(1)}%;background:${COLORS[t.priority]||'var(--accent)'}">
-          ${width>8?t.title:''}
-        </div>
+    const proj = projects.find(p=>p.id===t.project);
+    const color = COLORS[t.priority]||'var(--accent)';
+    return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;min-width:600px">
+      <div style="font-size:11px;width:130px;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text)" title="${t.title}">${t.title}</div>
+      <div style="flex:1;height:24px;background:var(--card2);border-radius:4px;position:relative;overflow:hidden">
+        ${dayLines}
+        ${todayPct>=0&&todayPct<=100?`<div style="position:absolute;left:${todayPct.toFixed(2)}%;top:0;bottom:0;width:2px;background:var(--accent);opacity:.8;z-index:2"></div>`:''}
+        <div style="position:absolute;left:${left.toFixed(2)}%;width:${Math.max(width,.5).toFixed(2)}%;top:3px;bottom:3px;border-radius:3px;background:${color};display:flex;align-items:center;padding:0 5px;font-size:9px;color:#fff;font-weight:600;overflow:hidden;white-space:nowrap;z-index:3">${width>6?t.title:''}</div>
       </div>
     </div>`;
   }).join('');
 
   document.getElementById('ganttContent').innerHTML = `
-    <div class="gantt-months">${months.map(m=>`<div class="gantt-month">${m}</div>`).join('')}</div>
-    <div class="gantt-wrap">${rows}</div>`;
+    <p style="font-size:11px;color:var(--muted);margin-bottom:10px">
+      ${withDates.length} tarea${withDates.length!==1?'s':''} · 
+      ${minD.toLocaleDateString('es-ES',{day:'numeric',month:'short'})} → ${maxD.toLocaleDateString('es-ES',{day:'numeric',month:'short',year:'numeric'})}
+    </p>
+    <div style="overflow-x:auto">
+      <div style="min-width:600px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:2px">
+          <div style="width:130px;flex-shrink:0"></div>
+          <div style="flex:1;height:20px;position:relative">${weeksHeader}</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+          <div style="width:130px;flex-shrink:0"></div>
+          <div style="flex:1;height:16px;position:relative">${daysHeader}</div>
+        </div>
+        ${rows}
+      </div>
+    </div>
+    <div style="display:flex;gap:12px;margin-top:14px;flex-wrap:wrap">
+      <span style="font-size:11px;color:var(--muted);display:flex;align-items:center;gap:4px"><span style="width:12px;height:4px;background:#f87171;border-radius:2px;display:inline-block"></span>Alta</span>
+      <span style="font-size:11px;color:var(--muted);display:flex;align-items:center;gap:4px"><span style="width:12px;height:4px;background:#fbbf24;border-radius:2px;display:inline-block"></span>Media</span>
+      <span style="font-size:11px;color:var(--muted);display:flex;align-items:center;gap:4px"><span style="width:12px;height:4px;background:#34d399;border-radius:2px;display:inline-block"></span>Baja</span>
+      <span style="font-size:11px;color:var(--accent);display:flex;align-items:center;gap:4px"><span style="width:2px;height:12px;background:var(--accent);display:inline-block"></span>Hoy</span>
+    </div>`;
   document.getElementById('ganttModal').classList.add('show');
 }
 
@@ -1076,15 +1172,45 @@ function selPriority(p){
 }
 function selUrgency(u){
   urgency=u;
-  ['urgente','normal'].forEach(x=>{
-    document.getElementById('c-'+x).className='chip'+(x===u?' sel-'+x:'');
+  const map = {urgente:'c-urgente', baja:'c-baja-urg'};
+  ['urgente','baja'].forEach(x=>{
+    const el=document.getElementById(map[x]);
+    if(el) el.className='chip'+(x===u?' sel-'+x:'');
   });
 }
+function getAllTags(){
+  const all = new Set();
+  tasks.forEach(t => (t.tags||[]).forEach(tag => all.add(tag)));
+  return [...all].sort();
+}
+function filterTagSuggestions(){
+  const v = document.getElementById('tagInput').value.trim().toLowerCase();
+  const box = document.getElementById('tagSuggestions');
+  const all = getAllTags().filter(t => !currentTags.includes(t) && (!v || t.toLowerCase().includes(v)));
+  if(!all.length){ box.classList.remove('open'); return; }
+  box.innerHTML = all.map(t=>`<div class="tag-sug-item" onmousedown="pickTag('${t}')">${t}</div>`).join('');
+  box.classList.add('open');
+}
+function pickTag(t){
+  if(!currentTags.includes(t)) currentTags.push(t);
+  renderTags();
+  document.getElementById('tagInput').value='';
+  document.getElementById('tagSuggestions').classList.remove('open');
+}
+function tagKeyDown(e){
+  if(e.key==='Enter'){ addTag(); e.preventDefault(); }
+  if(e.key==='Escape') document.getElementById('tagSuggestions').classList.remove('open');
+}
+document.addEventListener('click', e => {
+  if(!e.target.closest('#tagInput') && !e.target.closest('#tagSuggestions'))
+    document.getElementById('tagSuggestions')?.classList.remove('open');
+});
 function addTag(){
   const v=document.getElementById('tagInput').value.trim();
   if(!v||currentTags.includes(v)) return;
   currentTags.push(v); renderTags();
   document.getElementById('tagInput').value='';
+  document.getElementById('tagSuggestions').classList.remove('open');
 }
 function removeTag(t){ currentTags=currentTags.filter(x=>x!==t); renderTags(); }
 function renderTags(){
