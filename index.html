@@ -42,14 +42,25 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 /* ── APP SHELL ── */
 
 /* HEADER */
-.header{padding:12px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--surface);flex-shrink:0}
+.header{padding:10px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--surface);flex-shrink:0}
 .logo{font-size:17px;font-weight:600;letter-spacing:-.5px}
 .logo span{color:var(--accent)}
-.header-right{display:flex;gap:8px;align-items:center}
-.icon-btn{background:var(--card);border:1px solid var(--border);color:var(--text);width:34px;height:34px;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;transition:all .2s}
+.header-right{display:flex;gap:6px;align-items:center}
+.icon-btn{background:var(--card);border:1px solid var(--border);color:var(--text);width:32px;height:32px;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:15px;transition:all .2s;flex-shrink:0}
 .icon-btn:hover{background:var(--accent);color:#fff;border-color:var(--accent)}
-.sync-dot{width:8px;height:8px;border-radius:50%;background:var(--amber);display:inline-block;margin-right:4px;transition:background .3s}
+.gantt-btn{width:auto;padding:0 10px;gap:5px;font-size:12px;font-family:var(--font)}
+.btn-label{font-size:11px;font-weight:500}
+.sync-info{display:flex;align-items:center;margin-left:8px;font-size:12px;color:var(--muted)}
+.sync-txt{margin-left:2px}
+.user-info{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:4px;margin-left:6px}
+.sync-dot{width:8px;height:8px;border-radius:50%;background:var(--amber);display:inline-block;margin-right:2px;transition:background .3s}
 .sync-dot.ok{background:var(--green)}.sync-dot.err{background:var(--red)}
+@media(max-width:700px){
+  .header{padding:10px 12px}
+  .sync-info,.user-info,.sync-txt,.btn-label{display:none}
+  .gantt-btn{width:32px;padding:0}
+  .header-right{gap:4px}
+}
 
 /* STATS */
 .stats-bar{display:flex;border-bottom:1px solid var(--border);background:var(--surface);overflow-x:auto;flex-shrink:0}
@@ -257,21 +268,28 @@ select option{background:var(--card);color:var(--text)}
 
   <!-- HEADER -->
   <div class="header">
-    <div style="display:flex;align-items:center;gap:10px">
+    <div style="display:flex;align-items:center;gap:8px">
       <button class="icon-btn" id="mobProjBtn" onclick="toggleProjSidebar()" style="display:none"><i class="ti ti-layout-sidebar"></i></button>
       <div class="logo">task<span>flow</span></div>
-      <span style="font-size:12px;color:var(--muted);display:flex;align-items:center;margin-left:8px">
+      <span class="sync-info">
         <span class="sync-dot" id="syncDot"></span>
-        <span id="syncLabel">Conectando...</span>
+        <span id="syncLabel" class="sync-txt">Conectando...</span>
       </span>
-      <span style="font-size:12px;color:var(--muted);margin-left:8px;display:flex;align-items:center;gap:4px"><i class="ti ti-user" style="font-size:13px"></i><span id="headerUser"></span></span>
+      <span class="user-info"><i class="ti ti-user" style="font-size:12px"></i><span id="headerUser"></span></span>
     </div>
     <div class="header-right">
       <button class="icon-btn" onclick="startFocus()" title="Enfoque (F)"><i class="ti ti-eye"></i></button>
-      <button class="icon-btn" onclick="showGantt()" title="Diagrama Gantt" style="width:auto;padding:0 10px;gap:5px;font-size:12px"><i class="ti ti-chart-gantt"></i><span style="display:none" id="ganttBtnTxt">Gantt</span></button>
+      <button class="icon-btn gantt-btn" onclick="showGantt()" title="Diagrama Gantt">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="1" y="2" width="6" height="3" rx="1" fill="currentColor" opacity=".9"/>
+          <rect x="4" y="6.5" width="8" height="3" rx="1" fill="currentColor" opacity=".7"/>
+          <rect x="2" y="11" width="10" height="3" rx="1" fill="currentColor" opacity=".5"/>
+        </svg>
+        <span class="btn-label">Gantt</span>
+      </button>
       <button class="icon-btn" onclick="exportCSV()" title="Exportar CSV"><i class="ti ti-download"></i></button>
       <button class="icon-btn" id="themeBtn" onclick="toggleTheme()" title="Tema (D)"><i class="ti ti-sun"></i></button>
-      <button class="icon-btn" onclick="doLogout()" title="Cerrar sesión" style="border-color:var(--red);color:var(--red)" onmouseover="this.style.background='var(--red)';this.style.color='#fff'" onmouseout="this.style.background='';this.style.color='var(--red)'"><i class="ti ti-logout"></i></button>
+      <button class="icon-btn logout-btn" onclick="doLogout()" title="Cerrar sesión"><i class="ti ti-logout"></i></button>
     </div>
   </div>
 
@@ -470,12 +488,15 @@ select option{background:var(--card);color:var(--text)}
 
 <!-- MODAL GANTT -->
 <div class="overlay" id="ganttModal">
-  <div class="modal" style="width:700px;max-width:96vw">
-    <h3><i class="ti ti-chart-gantt" style="margin-right:6px"></i>Diagrama Gantt</h3>
-    <div id="ganttContent"></div>
-    <div class="modal-actions">
-      <button class="btn-sec" onclick="document.getElementById('ganttModal').classList.remove('show')">Cerrar</button>
+  <div class="modal" style="width:95vw;max-width:1100px;height:85vh;display:flex;flex-direction:column">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-shrink:0">
+      <h3 style="margin:0;display:flex;align-items:center;gap:8px">
+        <svg width="18" height="18" viewBox="0 0 16 16" fill="none"><rect x="1" y="2" width="6" height="3" rx="1" fill="currentColor" opacity=".9"/><rect x="4" y="6.5" width="8" height="3" rx="1" fill="currentColor" opacity=".7"/><rect x="2" y="11" width="10" height="3" rx="1" fill="currentColor" opacity=".5"/></svg>
+        Diagrama Gantt
+      </h3>
+      <button class="btn-sec" onclick="document.getElementById('ganttModal').classList.remove('show')" style="padding:6px 12px">✕ Cerrar</button>
     </div>
+    <div id="ganttContent" style="flex:1;overflow:auto"></div>
   </div>
 </div>
 
@@ -520,7 +541,7 @@ const db = firebase.firestore();
 
 // ── STATE ─────────────────────────────────────────────────
 let tasks = [];
-let projects = JSON.parse(localStorage.getItem('tf_projects') || '[]');
+let projects = [];
 let currentProject = null;
 let priority = 'alta';
 let urgency = 'urgente';
@@ -567,22 +588,23 @@ document.getElementById('loginPass').addEventListener('keydown', e => {
 
 // ── INIT ──────────────────────────────────────────────────
 function initApp(){
-  renderProjects();
-  renderProjectSelect();
   renderColorPicker();
   renderShareOnCreate();
+  subscribeProjects();
   subscribeFirestore();
   checkMobile();
   updatePomoDisplay();
   if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js');
 }
 
-function renderProjectSelect(){
-  const sel = document.getElementById('taskProject');
-  if(!sel) return;
-  sel.innerHTML = `<option value="">Sin proyecto</option>` +
-    projects.map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
-  if(currentProject) sel.value = currentProject;
+function subscribeProjects(){
+  db.collection('projects').orderBy('created','asc').onSnapshot(snapshot => {
+    projects = [];
+    snapshot.forEach(doc => projects.push({ ...doc.data(), id: doc.id }));
+    renderProjects();
+    renderProjectSelect();
+    renderShareOnCreate();
+  }, err => console.error('projects error', err));
 }
 
 function subscribeFirestore(){
@@ -657,25 +679,26 @@ function openNewProject(){
 }
 function closeProjModal(){ document.getElementById('projModal').classList.remove('show'); }
 
-function saveProject(){
+async function saveProject(){
   const name = document.getElementById('projName').value.trim();
   if(!name) return;
-  const proj = { id: Date.now().toString(), name, color: selectedColor };
-  projects.push(proj);
-  localStorage.setItem('tf_projects', JSON.stringify(projects));
+  await db.collection('projects').add({ name, color: selectedColor, created: Date.now() });
   closeProjModal();
-  renderProjects();
-  renderProjectSelect();
   showToast('Proyecto creado','ti-folder');
 }
 
 function deleteProject(id, e){
   e.stopPropagation();
-  projects = projects.filter(p=>p.id!==id);
-  localStorage.setItem('tf_projects', JSON.stringify(projects));
-  if(currentProject === id) currentProject = null;
-  renderProjects();
-  render();
+  db.collection('projects').doc(id).delete();
+  if(currentProject === id){ currentProject = null; render(); }
+}
+
+function renderProjectSelect(){
+  const sel = document.getElementById('taskProject');
+  if(!sel) return;
+  sel.innerHTML = `<option value="">Sin proyecto</option>` +
+    projects.map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
+  if(currentProject) sel.value = currentProject;
 }
 
 function renderColorPicker(){
@@ -1050,100 +1073,120 @@ function showGantt(){
   const dates = withDates.flatMap(t=>[new Date(t.startDate),new Date(t.deadline)]);
   let minD = new Date(Math.min(...dates));
   let maxD = new Date(Math.max(...dates));
-  // ajustar a lunes anterior y domingo siguiente
   const dow = minD.getDay();
   minD.setDate(minD.getDate() - (dow===0?6:dow-1));
   const dow2 = maxD.getDay();
   maxD.setDate(maxD.getDate() + (dow2===0?0:7-dow2));
   const totalDays = Math.round((maxD-minD)/(1000*60*60*24)) + 1;
 
-  // generar semanas
+  // px por día — mínimo 28px para que quepa texto, máximo 60px
+  const DAY_W = Math.max(28, Math.min(60, Math.floor((window.innerWidth * 0.7) / totalDays)));
+  const LABEL_W = 150;
+  const totalW = LABEL_W + DAY_W * totalDays;
+
+  // semanas
   const weeks = [];
-  const cur = new Date(minD);
-  let wNum = 1;
+  const cur = new Date(minD); let wNum = 1;
   while(cur <= maxD){
-    const wStart = new Date(cur);
-    const wEnd = new Date(cur); wEnd.setDate(wEnd.getDate()+6);
-    weeks.push({ label:`Sem ${wNum}`, start: new Date(wStart), end: new Date(wEnd) });
-    cur.setDate(cur.getDate()+7);
-    wNum++;
+    weeks.push({ label:`Sem ${wNum}`, offset: Math.round((cur-minD)/(1000*60*60*24)) });
+    cur.setDate(cur.getDate()+7); wNum++;
   }
 
-  // generar días
+  // días
   const days = [];
-  const d = new Date(minD);
-  while(d <= maxD){
-    days.push(new Date(d));
-    d.setDate(d.getDate()+1);
-  }
+  const dc = new Date(minD);
+  while(dc <= maxD){ days.push(new Date(dc)); dc.setDate(dc.getDate()+1); }
 
   const COLORS = {alta:'#f87171',media:'#fbbf24',baja:'#34d399'};
   const today = new Date(); today.setHours(0,0,0,0);
-  const todayPct = ((today-minD)/(1000*60*60*24))/totalDays*100;
+  const todayOffset = Math.round((today-minD)/(1000*60*60*24));
 
-  const weeksHeader = weeks.map(w => {
-    const left = ((w.start-minD)/(1000*60*60*24))/totalDays*100;
-    const width = 7/totalDays*100;
-    return `<div style="position:absolute;left:${left.toFixed(2)}%;width:${width.toFixed(2)}%;text-align:center;font-size:10px;color:var(--muted);font-family:var(--mono);border-right:1px solid var(--border);padding:3px 0;overflow:hidden">${w.label}</div>`;
-  }).join('');
+  const weeksHtml = weeks.map(w =>
+    `<div style="position:absolute;left:${w.offset*DAY_W}px;width:${7*DAY_W}px;font-size:10px;color:var(--muted);font-family:var(--mono);border-right:1px solid var(--border);padding:3px 4px;overflow:hidden;box-sizing:border-box">${w.label}<br><span style="font-size:9px;opacity:.6">${new Date(minD.getTime()+w.offset*86400000).toLocaleDateString('es-ES',{day:'numeric',month:'short'})}</span></div>`
+  ).join('');
 
-  const daysHeader = days.map((d,i) => {
-    const left = (i/totalDays)*100;
-    const width = (1/totalDays)*100;
+  const daysHtml = days.map((d,i) => {
     const isToday = d.getTime()===today.getTime();
     const isMon = d.getDay()===1;
-    const label = d.getDate();
-    return `<div style="position:absolute;left:${left.toFixed(2)}%;width:${width.toFixed(2)}%;text-align:center;font-size:9px;color:${isToday?'var(--accent)':isMon?'var(--text)':'var(--hint)'};font-family:var(--mono);font-weight:${isToday||isMon?'600':'400'};overflow:hidden">${label}</div>`;
+    const isSun = d.getDay()===0 || d.getDay()===6;
+    return `<div style="position:absolute;left:${i*DAY_W}px;width:${DAY_W}px;text-align:center;font-size:9px;color:${isToday?'var(--accent)':isMon?'var(--text)':'var(--hint)'};font-weight:${isToday?700:isMon?600:400};font-family:var(--mono);overflow:hidden;background:${isSun?'rgba(255,255,255,.02)':'transparent'}">${d.getDate()}</div>`;
   }).join('');
 
-  const dayLines = days.map((d,i) => {
-    const left = (i/totalDays)*100;
+  const dayLinesHtml = days.map((d,i) => {
     const isMon = d.getDay()===1;
-    return `<div style="position:absolute;left:${left.toFixed(2)}%;top:0;bottom:0;width:1px;background:${isMon?'var(--border)':'var(--hint)'};opacity:${isMon?1:0.4}"></div>`;
+    const isSun = d.getDay()===0||d.getDay()===6;
+    return `<div style="position:absolute;left:${i*DAY_W}px;top:0;bottom:0;width:${DAY_W}px;background:${isSun?'rgba(255,255,255,.015)':'transparent'};border-right:1px solid ${isMon?'var(--border)':'var(--hint)'};opacity:${isMon?0.8:0.25};box-sizing:border-box"></div>`;
   }).join('');
+
+  const todayLineHtml = todayOffset>=0&&todayOffset<totalDays
+    ? `<div style="position:absolute;left:${todayOffset*DAY_W+DAY_W/2}px;top:0;bottom:0;width:2px;background:var(--accent);opacity:.9;z-index:4;pointer-events:none"></div>`
+    : '';
+
+  const isOwner = t => !t.owner || t.owner === currentUser;
 
   const rows = withDates.map(t => {
     const s = new Date(t.startDate); s.setHours(0,0,0,0);
     const e = new Date(t.deadline); e.setHours(0,0,0,0);
-    const left = ((s-minD)/(1000*60*60*24))/totalDays*100;
-    const width = ((e-s)/(1000*60*60*24)+1)/totalDays*100;
-    const proj = projects.find(p=>p.id===t.project);
+    const startOff = Math.round((s-minD)/(1000*60*60*24));
+    const durDays = Math.round((e-s)/(1000*60*60*24)) + 1;
     const color = COLORS[t.priority]||'var(--accent)';
-    return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;min-width:600px">
-      <div style="font-size:11px;width:130px;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text)" title="${t.title}">${t.title}</div>
-      <div style="flex:1;height:24px;background:var(--card2);border-radius:4px;position:relative;overflow:hidden">
-        ${dayLines}
-        ${todayPct>=0&&todayPct<=100?`<div style="position:absolute;left:${todayPct.toFixed(2)}%;top:0;bottom:0;width:2px;background:var(--accent);opacity:.8;z-index:2"></div>`:''}
-        <div style="position:absolute;left:${left.toFixed(2)}%;width:${Math.max(width,.5).toFixed(2)}%;top:3px;bottom:3px;border-radius:3px;background:${color};display:flex;align-items:center;padding:0 5px;font-size:9px;color:#fff;font-weight:600;overflow:hidden;white-space:nowrap;z-index:3">${width>6?t.title:''}</div>
+    const done = t.done ? 'opacity:.5;' : '';
+    const proj = projects.find(p=>p.id===t.project);
+    const canEdit = isOwner(t);
+    const clickable = canEdit ? `onclick="ganttOpenTask('${t.id}')" style="cursor:pointer"` : '';
+    const tooltip = `${t.title} | ${t.startDate} → ${t.deadline} | ${t.priority}${proj?' | '+proj.name:''}`;
+    return `<div style="display:flex;align-items:center;margin-bottom:5px;height:32px">
+      <div style="width:${LABEL_W}px;flex-shrink:0;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text);padding-right:10px;${done}" title="${t.title}">${t.done?'✓ ':''}<span ${canEdit?`onclick="ganttOpenTask('${t.id}')" style="cursor:pointer;color:var(--accent)"`:''} title="${tooltip}">${t.title}</span></div>
+      <div style="position:relative;width:${totalDays*DAY_W}px;height:28px;flex-shrink:0">
+        ${dayLinesHtml}
+        ${todayLineHtml}
+        <div ${clickable} title="${tooltip}" style="position:absolute;left:${startOff*DAY_W}px;width:${Math.max(durDays*DAY_W,4)}px;top:4px;bottom:4px;border-radius:4px;background:${color};${done}display:flex;align-items:center;padding:0 6px;font-size:9px;color:#fff;font-weight:600;overflow:hidden;white-space:nowrap;z-index:3;transition:filter .15s;box-shadow:0 1px 4px rgba(0,0,0,.3)"
+          onmouseover="this.style.filter='brightness(1.2)'"
+          onmouseout="this.style.filter=''"
+        >${durDays*DAY_W>40?t.title:''}</div>
       </div>
     </div>`;
   }).join('');
 
   document.getElementById('ganttContent').innerHTML = `
-    <p style="font-size:11px;color:var(--muted);margin-bottom:10px">
-      ${withDates.length} tarea${withDates.length!==1?'s':''} · 
-      ${minD.toLocaleDateString('es-ES',{day:'numeric',month:'short'})} → ${maxD.toLocaleDateString('es-ES',{day:'numeric',month:'short',year:'numeric'})}
-    </p>
-    <div style="overflow-x:auto">
-      <div style="min-width:600px">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:2px">
-          <div style="width:130px;flex-shrink:0"></div>
-          <div style="flex:1;height:20px;position:relative">${weeksHeader}</div>
+    <div style="display:flex;gap:16px;align-items:center;margin-bottom:12px;flex-wrap:wrap;flex-shrink:0">
+      <span style="font-size:12px;color:var(--muted)">${withDates.length} tarea${withDates.length!==1?'s':''} · ${minD.toLocaleDateString('es-ES',{day:'numeric',month:'short'})} → ${maxD.toLocaleDateString('es-ES',{day:'numeric',month:'short',year:'numeric'})}</span>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <span style="font-size:11px;color:var(--muted);display:flex;align-items:center;gap:4px"><span style="width:12px;height:4px;background:#f87171;border-radius:2px;display:inline-block"></span>Alta</span>
+        <span style="font-size:11px;color:var(--muted);display:flex;align-items:center;gap:4px"><span style="width:12px;height:4px;background:#fbbf24;border-radius:2px;display:inline-block"></span>Media</span>
+        <span style="font-size:11px;color:var(--muted);display:flex;align-items:center;gap:4px"><span style="width:12px;height:4px;background:#34d399;border-radius:2px;display:inline-block"></span>Baja</span>
+        <span style="font-size:11px;color:var(--accent);display:flex;align-items:center;gap:4px"><span style="width:2px;height:12px;background:var(--accent);display:inline-block"></span>Hoy</span>
+        <span style="font-size:11px;color:var(--muted)"><i class="ti ti-hand-click"></i> Clic en tarea para editar</span>
+      </div>
+    </div>
+    <div style="overflow:auto;flex:1">
+      <div style="min-width:${totalW}px">
+        <div style="display:flex;margin-bottom:2px;position:sticky;top:0;background:var(--surface);z-index:5">
+          <div style="width:${LABEL_W}px;flex-shrink:0"></div>
+          <div style="position:relative;width:${totalDays*DAY_W}px;height:34px">${weeksHtml}</div>
         </div>
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-          <div style="width:130px;flex-shrink:0"></div>
-          <div style="flex:1;height:16px;position:relative">${daysHeader}</div>
+        <div style="display:flex;margin-bottom:6px;position:sticky;top:34px;background:var(--surface);z-index:5">
+          <div style="width:${LABEL_W}px;flex-shrink:0"></div>
+          <div style="position:relative;width:${totalDays*DAY_W}px;height:16px">${daysHtml}</div>
         </div>
         ${rows}
       </div>
-    </div>
-    <div style="display:flex;gap:12px;margin-top:14px;flex-wrap:wrap">
-      <span style="font-size:11px;color:var(--muted);display:flex;align-items:center;gap:4px"><span style="width:12px;height:4px;background:#f87171;border-radius:2px;display:inline-block"></span>Alta</span>
-      <span style="font-size:11px;color:var(--muted);display:flex;align-items:center;gap:4px"><span style="width:12px;height:4px;background:#fbbf24;border-radius:2px;display:inline-block"></span>Media</span>
-      <span style="font-size:11px;color:var(--muted);display:flex;align-items:center;gap:4px"><span style="width:12px;height:4px;background:#34d399;border-radius:2px;display:inline-block"></span>Baja</span>
-      <span style="font-size:11px;color:var(--accent);display:flex;align-items:center;gap:4px"><span style="width:2px;height:12px;background:var(--accent);display:inline-block"></span>Hoy</span>
     </div>`;
+
+  // scroll para que hoy sea visible
+  setTimeout(() => {
+    const wrap = document.querySelector('#ganttContent > div[style*="overflow"]');
+    if(wrap && todayOffset > 0){
+      wrap.scrollLeft = Math.max(0, (todayOffset - 3) * DAY_W);
+    }
+  }, 50);
+
   document.getElementById('ganttModal').classList.add('show');
+}
+
+function ganttOpenTask(id){
+  document.getElementById('ganttModal').classList.remove('show');
+  setTimeout(() => openEdit(id), 150);
 }
 
 // ── FOCUS ─────────────────────────────────────────────────
